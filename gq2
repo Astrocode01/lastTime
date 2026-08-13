@@ -1,0 +1,177 @@
+#include <iostream>
+#include <queue> // MANDATORY for Level-Wise Display
+
+struct Node {
+    int data;
+    Node* left;
+    Node* right;
+
+    Node(int val) {
+        data = val;
+        left = nullptr;
+        right = nullptr;
+    }
+};
+
+class BST_Advanced {
+private:
+    Node* root;
+
+    // ---------------------------------------------------------
+    // 1. MIRROR IMAGE ENGINE
+    // ---------------------------------------------------------
+    // This mutates the tree in-place by swapping left and right pointers.
+    void mirrorHelper(Node* current) {
+        if (current == nullptr) return;
+
+        // Recursively mirror the left and right subtrees first
+        mirrorHelper(current->left);
+        mirrorHelper(current->right);
+
+        // Swap the pointers of the current node
+        Node* temp = current->left;
+        current->left = current->right;
+        current->right = temp;
+    }
+
+    // ---------------------------------------------------------
+    // 2. CREATE A COPY ENGINE
+    // ---------------------------------------------------------
+    Node* copyHelper(Node* current) {
+        if (current == nullptr) return nullptr;
+
+        // Allocate fresh memory for the new node
+        Node* newNode = new Node(current->data);
+        
+        // Recursively copy left and right subtrees
+        newNode->left = copyHelper(current->left);
+        newNode->right = copyHelper(current->right);
+
+        return newNode;
+    }
+
+    // ---------------------------------------------------------
+    // Helper for Deletion (Inorder Successor)
+    // ---------------------------------------------------------
+    Node* minValueNode(Node* node) {
+        Node* current = node;
+        while (current && current->left != nullptr) {
+            current = current->left;
+        }
+        return current;
+    }
+
+    // ---------------------------------------------------------
+    // 3. DELETE SPECIFIED NODE ENGINE
+    // ---------------------------------------------------------
+    Node* deleteHelper(Node* current, int val) {
+        if (current == nullptr) return current;
+
+        if (val < current->data) {
+            current->left = deleteHelper(current->left, val);
+        } else if (val > current->data) {
+            current->right = deleteHelper(current->right, val);
+        } else {
+            // Node found. 
+            // Case 1 & 2: One child or no child
+            if (current->left == nullptr) {
+                Node* temp = current->right;
+                delete current;
+                return temp;
+            } else if (current->right == nullptr) {
+                Node* temp = current->left;
+                delete current;
+                return temp;
+            }
+
+            // Case 3: Two children
+            Node* temp = minValueNode(current->right);
+            current->data = temp->data;
+            current->right = deleteHelper(current->right, temp->data);
+        }
+        return current;
+    }
+
+    // Standard insert to build the tree for testing
+    Node* insertHelper(Node* current, int val) {
+        if (current == nullptr) return new Node(val);
+        if (val < current->data) current->left = insertHelper(current->left, val);
+        else if (val > current->data) current->right = insertHelper(current->right, val);
+        return current;
+    }
+
+public:
+    BST_Advanced() { root = nullptr; }
+
+    // Initialize with an existing root (used for the Copy function)
+    BST_Advanced(Node* existingRoot) { root = existingRoot; }
+
+    void insert(int val) { root = insertHelper(root, val); }
+    void remove(int val) { root = deleteHelper(root, val); }
+
+    void convertToMirror() { 
+        mirrorHelper(root); 
+    }
+
+    BST_Advanced createCopy() {
+        Node* copiedRoot = copyHelper(root);
+        return BST_Advanced(copiedRoot); // Return a completely new tree object
+    }
+
+    // ---------------------------------------------------------
+    // 4. DISPLAY TREE LEVEL-WISE (Breadth-First Search)
+    // ---------------------------------------------------------
+    void displayLevelWise() {
+        if (root == nullptr) {
+            std::cout << "Tree is empty.\n";
+            return;
+        }
+
+        std::queue<Node*> q;
+        q.push(root);
+
+        while (!q.empty()) {
+            // Get the node at the front of the line
+            Node* current = q.front();
+            q.pop();
+
+            std::cout << current->data << " ";
+
+            // If it has children, send them to the back of the line
+            if (current->left != nullptr) q.push(current->left);
+            if (current->right != nullptr) q.push(current->right);
+        }
+        std::cout << "\n";
+    }
+};
+
+int main() {
+    BST_Advanced tree;
+    tree.insert(50);
+    tree.insert(30);
+    tree.insert(70);
+    tree.insert(20);
+    tree.insert(40);
+    tree.insert(60);
+    tree.insert(80);
+
+    std::cout << "Original Tree Level-Wise: \n";
+    tree.displayLevelWise(); // Expected: 50 30 70 20 40 60 80
+
+    std::cout << "\nCreating a completely independent copy...\n";
+    BST_Advanced copiedTree = tree.createCopy();
+
+    std::cout << "\nConverting ORIGINAL tree to its Mirror Image...\n";
+    tree.convertToMirror();
+    std::cout << "Original Tree (Now Mirrored) Level-Wise: \n";
+    tree.displayLevelWise(); // Expected: 50 70 30 80 60 40 20
+
+    std::cout << "Copied Tree Level-Wise (Should remain untouched): \n";
+    copiedTree.displayLevelWise(); // Expected: 50 30 70 20 40 60 80
+
+    std::cout << "\nDeleting 50 (Root) from Copied Tree...\n";
+    copiedTree.remove(50);
+    copiedTree.displayLevelWise();
+
+    return 0;
+}
