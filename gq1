@@ -1,0 +1,203 @@
+#include <iostream>
+#include <algorithm> // for std::max
+
+// The core structure of the tree
+struct Node {
+    int data;
+    int count; // Handling insertion of duplicate entries
+    Node* left;
+    Node* right;
+
+    Node(int val) {
+        data = val;
+        count = 1;
+        left = nullptr;
+        right = nullptr;
+    }
+};
+
+class BinarySearchTree {
+private:
+    Node* root;
+
+    // ---------------------------------------------------------
+    // 1. INSERTION ENGINE
+    // ---------------------------------------------------------
+    Node* insertHelper(Node* current, int val) {
+        if (current == nullptr) return new Node(val);
+
+        if (val < current->data) {
+            current->left = insertHelper(current->left, val);
+        } else if (val > current->data) {
+            current->right = insertHelper(current->right, val);
+        } else {
+            current->count++; // Handle duplicate by incrementing
+        }
+        return current;
+    }
+
+    // ---------------------------------------------------------
+    // 2. SEARCH ENGINE
+    // ---------------------------------------------------------
+    bool searchHelper(Node* current, int val) {
+        if (current == nullptr) return false; // Base case: not found
+        if (current->data == val) return true; // Base case: found
+        
+        if (val < current->data) return searchHelper(current->left, val);
+        return searchHelper(current->right, val);
+    }
+
+    // ---------------------------------------------------------
+    // 3. DISPLAY (IN-ORDER TRAVERSAL)
+    // ---------------------------------------------------------
+    void displayHelper(Node* current) {
+        if (current == nullptr) return;
+        
+        displayHelper(current->left);
+        // Print the value as many times as it was inserted
+        for (int i = 0; i < current->count; ++i) {
+            std::cout << current->data << " ";
+        }
+        displayHelper(current->right);
+    }
+
+    // ---------------------------------------------------------
+    // 4. DEPTH CALCULATION
+    // ---------------------------------------------------------
+    int depthHelper(Node* current) {
+        if (current == nullptr) return 0;
+        
+        int leftDepth = depthHelper(current->left);
+        int rightDepth = depthHelper(current->right);
+        
+        return std::max(leftDepth, rightDepth) + 1;
+    }
+
+    // ---------------------------------------------------------
+    // 5. DELETION ENGINE (The Boss Fight)
+    // ---------------------------------------------------------
+    // Helper to find the Inorder Successor (smallest value in right subtree)
+    Node* minValueNode(Node* node) {
+        Node* current = node;
+        while (current && current->left != nullptr) {
+            current = current->left;
+        }
+        return current;
+    }
+
+    Node* deleteHelper(Node* current, int val) {
+        if (current == nullptr) return current; // Base case: empty tree
+
+        // Step 1: Traverse to find the node
+        if (val < current->data) {
+            current->left = deleteHelper(current->left, val);
+        } else if (val > current->data) {
+            current->right = deleteHelper(current->right, val);
+        } else {
+            // WE FOUND THE NODE TO DELETE.
+
+            // Handle duplicates: just decrement and return
+            if (current->count > 1) {
+                current->count--;
+                return current;
+            }
+
+            // Case A: Node with only one child or no child
+            if (current->left == nullptr) {
+                Node* temp = current->right;
+                delete current; // Free the memory!
+                return temp;
+            } else if (current->right == nullptr) {
+                Node* temp = current->left;
+                delete current; // Free the memory!
+                return temp;
+            }
+
+            // Case B: Node with two children
+            // Find the inorder successor (smallest in the right subtree)
+            Node* temp = minValueNode(current->right);
+            
+            // Copy the successor's content to this node
+            current->data = temp->data;
+            current->count = temp->count;
+            
+            // Force the successor's count to 1 so the recursive call deletes it entirely
+            temp->count = 1; 
+            
+            // Recursively delete the inorder successor
+            current->right = deleteHelper(current->right, temp->data);
+        }
+        return current;
+    }
+
+    // ---------------------------------------------------------
+    // MEMORY MANAGEMENT (Destructor Helper)
+    // ---------------------------------------------------------
+    void destroyTree(Node* current) {
+        if (current != nullptr) {
+            destroyTree(current->left);
+            destroyTree(current->right);
+            delete current;
+        }
+    }
+
+public:
+    // Constructor
+    BinarySearchTree() { 
+        root = nullptr; 
+    }
+
+    // Destructor to prevent memory leaks
+    ~BinarySearchTree() { 
+        destroyTree(root); 
+    }
+
+    // Clean public interfaces
+    void insert(int val) { root = insertHelper(root, val); }
+    bool search(int val) { return searchHelper(root, val); }
+    void display() { 
+        displayHelper(root); 
+        std::cout << "\n";
+    }
+    int getDepth() { return depthHelper(root); }
+    void remove(int val) { root = deleteHelper(root, val); }
+};
+
+// ---------------------------------------------------------
+// HOW TO TEST IT
+// ---------------------------------------------------------
+int main() {
+    BinarySearchTree tree;
+
+    std::cout << "Inserting values...\n";
+    tree.insert(50);
+    tree.insert(30);
+    tree.insert(20);
+    tree.insert(40);
+    tree.insert(70);
+    tree.insert(60);
+    tree.insert(80);
+    tree.insert(40); // Duplicate
+
+    std::cout << "Tree Display (In-Order Traversal): ";
+    tree.display(); // Expected: 20 30 40 40 50 60 70 80
+
+    std::cout << "Depth of tree: " << tree.getDepth() << "\n";
+
+    std::cout << "Searching for 40: " << (tree.search(40) ? "Found" : "Not Found") << "\n";
+    std::cout << "Searching for 99: " << (tree.search(99) ? "Found" : "Not Found") << "\n";
+
+    std::cout << "\nDeleting 40 (Duplicate reduces count)...\n";
+    tree.remove(40);
+    tree.display(); // Expected: 20 30 40 50 60 70 80
+
+    std::cout << "Deleting 20 (Leaf node)...\n";
+    tree.remove(20);
+    tree.display();
+
+    std::cout << "Deleting 50 (Root node with two children)...\n";
+    tree.remove(50);
+    tree.display(); // Expected: 30 40 60 70 80
+
+    return 0;
+}
